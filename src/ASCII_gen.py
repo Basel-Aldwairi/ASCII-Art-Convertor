@@ -12,7 +12,7 @@ ROOT = Path().resolve()
 # custom_img = True
 
 def get_path(custom_img = False, web_image = False):
-    img_path = ROOT / 'images' / 'hornet.jpg'
+    img_path = ROOT / 'images' / 'pochita.jpg'
 
     if custom_img:
         if web_image:
@@ -30,7 +30,7 @@ def get_path(custom_img = False, web_image = False):
                 return None
     return img_path
 
-def make_ascii(img_path, inverse_colors = False, down_scale_value = 16, web_image = False):
+def make_ascii(img_path, inverse_colors = False, down_scale_value = 16, web_image = False, threshold = 128):
     img = None
     try:
         if web_image:
@@ -52,16 +52,17 @@ def make_ascii(img_path, inverse_colors = False, down_scale_value = 16, web_imag
     if inverse_colors:
         img_mat = 255 - img_mat
 
-    img_mat_filtered = np.where(img_mat>128,img_mat,0)
-
-    img_test = Image.fromarray(img_mat_filtered)
-
+    img_mat_filtered = np.where(img_mat>threshold,img_mat,0)
+    # img_mat_filtered = img_mat
     chars = """$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,"^`'."""
     new_chars = np.array(list(chars[:-4][::-1]))
+    char_len = len(new_chars)
 
     def get_ascii(x):
-        return np.floor((x - 127) / 2 - 1).astype(int)
-    img_ascii = np.where(img_mat_filtered>=128,new_chars[get_ascii(img_mat_filtered)],'.')
+        return np.floor((x - threshold - 1) / (np.ceil((255 - threshold) / char_len)) - 1).astype(int)
+
+
+    img_ascii = np.where(img_mat_filtered>=threshold,new_chars[get_ascii(img_mat_filtered)],'.')
 
     lines = []
     for line in img_ascii:
@@ -84,4 +85,4 @@ Output Text path : {output_path}
 """)
 
 img_path = get_path(custom_img=True,web_image=True)
-make_ascii(img_path,inverse_colors=False,down_scale_value=8,web_image=True)
+make_ascii(img_path,inverse_colors=True,down_scale_value=8,web_image=True,threshold=192)

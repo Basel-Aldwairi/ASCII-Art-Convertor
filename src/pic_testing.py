@@ -1,11 +1,6 @@
-from PIL import Image
-from pathlib import Path
+import numpy as np
 
-ROOT = Path(__file__).resolve().parent.parent
-img_path = ROOT / 'images' / 'hornet.jpg'
-
-img = Image.open(img_path)
-
-
-mat = img.convert(matrix=(200,200))
-# print(list(mat))
+threshold = 128
+x = 255
+char_len = 64
+print((np.ceil((x - threshold )/ char_len)))
