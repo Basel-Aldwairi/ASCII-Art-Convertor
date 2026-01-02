@@ -22,6 +22,12 @@ char_len = len(chars)
 chars_np = np.array(list(chars))
 
 
+def get_image_url(url):
+    response = requests.get(url, timeout=10)
+    img_pil = Image.open(BytesIO(response.content)).convert('RGB')
+    img = cv2.cvtColor(np.array(img_pil), cv2.COLOR_BGR2RGB)
+
+    return img
 
 
 def get_img(mode= Mode.TEST_IMAGE):
@@ -42,9 +48,7 @@ def get_img(mode= Mode.TEST_IMAGE):
 
         case Mode.WEB_IMAGE:
             url = input('Enter the Image URL : \n')
-            response = requests.get(url, timeout=10)
-            img_pil = Image.open(BytesIO(response.content)).convert('RGB')
-            img = cv2.cvtColor(np.array(img_pil), cv2.COLOR_BGR2RGB)
+            img = get_image_url(url)
 
     return img
 
@@ -56,10 +60,7 @@ def get_ascii(x):
 THRESHOLD = 0
 SEGMENTATION = 1
 
-def make_ascii(img_mode, preprocess_mode= Mode.SEGMENTATION, inverse_colors = False, down_scale_value = 16, threshold = 128, padding=True, pad_len = 2, pad_value= 128):
-
-    img = get_img(img_mode)
-
+def make_ascii(img, preprocess_mode= Mode.SEGMENTATION, inverse_colors = False, histogram_normalization = False,down_scale_value = 16, threshold = 128, pad_len = 2, pad_value= 128):
 
     img_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_grey_preprocessed = img_grey.copy()
@@ -67,13 +68,16 @@ def make_ascii(img_mode, preprocess_mode= Mode.SEGMENTATION, inverse_colors = Fa
     if inverse_colors:
         img_grey_preprocessed = 255 - img_grey_preprocessed
 
+    if histogram_normalization:
+        cv2.equalizeHist(img_grey_preprocessed,img_grey_preprocessed)
+
 
     match preprocess_mode:
         case Mode.THRESHOLD:
             img_grey_preprocessed = np.where(img_grey_preprocessed>threshold,img_grey_preprocessed,0)
 
         case Mode.SEGMENTATION:
-            if padding:
+            if pad_len > 0:
                 pad = pad_len
                 img_grey_preprocessed = cv2.copyMakeBorder(
                     img_grey_preprocessed,
@@ -99,16 +103,22 @@ def make_ascii(img_mode, preprocess_mode= Mode.SEGMENTATION, inverse_colors = Fa
             cv2.drawContours(mask_c, contoures, -1, 255, thickness=cv2.FILLED)
             h, w = img_grey_preprocessed.shape
             mask_c_resize = cv2.resize(mask_c, (w, h))
+            # print()
+            # print(f'{mask_c_resize = }')
+            # print()
+            # print(f'{img_grey_preprocessed = }')
 
+            # mask_c_resize = (mask_c_resize > 0).astype('uint8') * 255
+            # img_grey_preprocessed = (img_grey_preprocessed > 0).astype('uint8') * 255
              # Segmented
             img_grey_preprocessed = cv2.bitwise_and(img_grey_preprocessed, mask_c_resize)
-            cv2.normalize(
-                img_grey_preprocessed,
-                img_grey_preprocessed,
-                alpha= 0,
-                beta= 255,
-                norm_type= cv2.NORM_MINMAX
-            )
+            # cv2.normalize(
+            #     img_grey_preprocessed,
+            #     img_grey_preprocessed,
+            #     alpha= 0,
+            #     beta= 255,
+            #     norm_type= cv2.NORM_MINMAX
+            # )
 
     h, w = img_grey.shape
     new_h, new_w = int(h // down_scale_value), int(w // down_scale_value)
@@ -124,16 +134,17 @@ def make_ascii(img_mode, preprocess_mode= Mode.SEGMENTATION, inverse_colors = Fa
         new_line = ''.join(line)
         lines.append(new_line)
 
-    output_path = '../images/output.txt'
+#     output_path = '../images/output.txt'
+#
+#     with open (output_path, 'w', encoding='utf-8') as f:
+#         for line in lines:
+#             f.write(line)
+#             f.write('\n')
+#
+#     print(f"""
+# Turned image into ASCII
+# Output Text path : {output_path}
+# """)
+    return lines
 
-    with open (output_path, 'w', encoding='utf-8') as f:
-        for line in lines:
-            f.write(line)
-            f.write('\n')
-
-    print(f"""
-Turned image into ASCII 
-Output Text path : {output_path}
-""")
-
-# make_ascii(img_mode=Mode.WEB_IMAGE, preprocess_mode= Mode.SEGMENTATION, inverse_colors=True,down_scale_value=8,threshold=128, pad_value=0, pad_len=5)
+# make_ascii(img = get_img(mode=Mode.WEB_IMAGE), preprocess_mode= Mode.SEGMENTATION, inverse_colors=True,down_scale_value=2,threshold=128, pad_value=0, pad_len=5)
